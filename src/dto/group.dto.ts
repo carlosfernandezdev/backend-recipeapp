@@ -15,7 +15,7 @@ export const CreateGroupDTO = z.object({
 });
 export type CreateGroupDTO = z.infer<typeof CreateGroupDTO>;
 
-/** Actualizar Grupo (todos opcionales; exige al menos 1 campo) */
+/** Actualizar Grupo (Solo exige un campo) */
 export const UpdateGroupDTO = z
   .object({
     name: z.string().min(1).max(60).optional(),

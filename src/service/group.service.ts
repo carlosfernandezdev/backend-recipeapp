@@ -1,7 +1,7 @@
 // src/service/group.service.ts
 import { Types, FilterQuery } from "mongoose";
-import { Group } from "../models/group.model";    // Asegúrate que tu file exporte: export const Group = model<IGroup>(...)
-import Recipe from "../models/recipe.model";      // Ajusta la ruta/nombre si difiere
+import { Group } from "../models/group.model";    
+import Recipe from "../models/recipe.model";      
 import {
   type CreateGroupDTO,
   type UpdateGroupDTO,
@@ -118,11 +118,6 @@ export async function listGroups(ownerId: string, params: ListGroupsQueryDTO) {
   };
 }
 
-/** =========================
- * Asociación Receta ↔ Grupo
- * (La “verdad” vive en Group.recipes[])
- * ======================= */
-
 /** Agregar receta a un grupo (sin duplicar) */
 export async function addRecipeToGroup(ownerId: string, groupId: string, recipeId: string) {
   // Validar ownership del grupo
@@ -159,7 +154,7 @@ export async function addRecipeToGroup(ownerId: string, groupId: string, recipeI
 
 /** Quitar receta de un grupo */
 export async function removeRecipeFromGroup(ownerId: string, groupId: string, recipeId: string) {
-  // Validar ownership del grupo
+
   const g = await Group.findOne({ _id: oid(groupId), owner: oid(ownerId) });
   if (!g) {
     const e: any = new Error("Grupo no encontrado o no autorizado");
