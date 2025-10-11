@@ -1,0 +1,4 @@
+recipes_crud_test_min.sh
+.env
+node_modules/
+dist/
