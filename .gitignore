@@ -2,3 +2,5 @@ recipes_crud_test_min.sh
 .env
 node_modules/
 dist/
+login_recipes_groups.sh
+test_group_filter.sh

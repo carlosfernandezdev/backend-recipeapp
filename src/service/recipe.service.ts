@@ -21,7 +21,7 @@ export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
     steps: data.steps,
     images: data.images ?? [],
     tags: data.tags ?? [],
-    groups: [], // más adelante podremos asociar
+    groups: [], 
   });
   return sanitize(recipe);
 }
@@ -46,7 +46,6 @@ export async function getRecipeById(ownerId: string, id: string) {
 }
 
 export async function updateRecipe(ownerId: string, id: string, data: Partial<IRecipe>) {
-  // Si cambia el título, hay que recalcular titleSlug y chequear unicidad
   if (data.title) {
     const titleSlug = toSlug(String(data.title));
     const conflict = await Recipe.exists({
