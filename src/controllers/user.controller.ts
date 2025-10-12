@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model";
-import { toUserPublic } from "../dto/user.dto";
+import { UserRegisterDto, UserLoginDto, UserUpdateDto, toUserPublic} from "../dto/user.dto";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt";
 
 /** -------------------- AUTH -------------------- **/
 
 /** POST /auth/register */
 export async function registerCtrl(req: Request, res: Response) {
-  const { email, password, name } = req.body;
+  const { email, password, name } = UserRegisterDto.parse(req.body);
   if (!email || !password || !name) {
     return res.status(400).json({ message: "Campos faltantes" });
   }
@@ -34,7 +34,7 @@ export async function registerCtrl(req: Request, res: Response) {
 
 /** POST /auth/login */
 export async function loginCtrl(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const { email, password } = UserLoginDto.parse(req.body);
   if (!email || !password) {
     return res.status(400).json({ message: "Campos faltantes" });
   }
@@ -90,23 +90,18 @@ export async function getMe(req: Request, res: Response) {
 }
 
 /** PATCH /users/me */
-export async function patchMe(req: Request, res: Response) {
+export async function patchMe(req, res) {
   const userId = (req as any).user?.id;
   if (!userId) return res.status(401).json({ message: "No autorizado" });
 
-  const { name } = req.body;
-  const updated = await User.findByIdAndUpdate(
-    userId,
-    { $set: { ...(name ? { name } : {}) } },
-    { new: true }
-  );
+  // antes: const { name } = req.body;
+  const payload = UserUpdateDto.parse(req.body);
+
+  const updated = await User.findByIdAndUpdate(userId, { $set: payload }, { new: true });
   if (!updated) return res.status(404).json({ message: "Usuario no encontrado" });
 
   return res.json({ user: toUserPublic(updated) });
 }
-
-/** Alias por compatibilidad si tu router exportaba updateMe */
-export const updateMe = patchMe;
 
 /** DELETE /users/me  (borrar cuenta) */
 export async function deleteMe(req: Request, res: Response) {
