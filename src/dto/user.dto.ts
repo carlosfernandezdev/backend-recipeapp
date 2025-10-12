@@ -1,29 +1,23 @@
 import { z } from "zod";
+import { IUser } from "../models/user.model";
 
-/* ---------- AUTH ---------- */
-export const RegisterDTO = z.object({
+export const UserPublicDto = z.object({
+  id: z.string(),
   email: z.string().email(),
-  password: z.string().min(8, "Mínimo 8 caracteres"),
-  name: z.string().min(1).max(80),
-});
+  name: z.string(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+}).strict();
 
-export type RegisterDTO = z.infer<typeof RegisterDTO>;
+export type UserPublic = z.infer<typeof UserPublicDto>;
 
-export const LoginDTO = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-export type LoginDTO = z.infer<typeof LoginDTO>;
-
-export const RefreshDTO = z.object({
-  refreshToken: z.string().min(1),
-});
-export type RefreshDTO = z.infer<typeof RefreshDTO>;
-
-/* ---------- USER PROFILE ---------- */
-export const UpdateProfileDTO = z.object({
-  name: z.string().min(1).max(80).optional(),
-  bio: z.string().max(280).optional(),
-});
-export type UpdateProfileDTO = z.infer<typeof UpdateProfileDTO>;
+export function toUserPublic(u: Partial<IUser> & { _id?: any; id?: any }) {
+  const shaped = {
+    id: String(u.id ?? u._id),
+    email: u.email!,
+    name: u.name!,
+    createdAt: u.createdAt!,
+    updatedAt: u.updatedAt!,
+  };
+  return UserPublicDto.parse(shaped);
+}

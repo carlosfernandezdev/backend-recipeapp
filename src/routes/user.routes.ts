@@ -1,11 +1,16 @@
+// src/routes/user.routes.ts
 import { Router } from "express";
-import { verifyAccess } from "../middlewares/auth";
-import { getMe, patchMe, deleteMe } from "../controllers/user.controller";
+import { requireAuth } from "../middlewares/auth"; // ⬅ ahora lo exporta tu auth.ts
+import {
+  getMe,
+  patchMe,      // o updateMe (si usabas ese nombre)
+  deleteMe,
+} from "../controllers/user.controller"; // ajusta el path si difiere
 
 const router = Router();
 
-router.get("/me", verifyAccess, (req, res, next) => getMe(req, res).catch(next));
-router.patch("/me", verifyAccess, (req, res, next) => patchMe(req, res).catch(next));
-router.delete("/me", verifyAccess, (req, res, next) => deleteMe(req, res).catch(next));
+router.get("/me",    requireAuth, getMe);
+router.patch("/me",  requireAuth, patchMe);   // o updateMe
+router.delete("/me", requireAuth, deleteMe);
 
 export default router;

@@ -23,7 +23,7 @@ export async function loginUser(email: string, password: string) {
     err.status = 401;
     throw err;
   }
-  const ok = await comparePassword(password, user.passwordHash);
+  const ok = await comparePassword(password, user.passwordHash ?? "");
   if (!ok) {
     const err: any = new Error("Credenciales inválidas");
     err.status = 401;
