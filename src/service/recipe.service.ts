@@ -13,43 +13,6 @@ function pickOwnerMeta(r: any) {
   };
 }
 
-function sanitize(r: IRecipe & any) {
-  const { owner, ownerName, ownerEmail } = pickOwnerMeta(r);
-  return {
-    id: r.id.toString(),
-    owner,
-    ownerName,
-    ownerEmail,
-    title: r.title,
-    description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
-    images: r.images ?? [],
-    tags: r.tags ?? [],
-    groups: r.groups?.map((g: any) => String(g)) ?? [],
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  };
-}
-
-function sanitizeLean(r: any) {
-  const { owner, ownerName, ownerEmail } = pickOwnerMeta(r);
-  return {
-    id: r._id.toString(),
-    owner,
-    ownerName,
-    ownerEmail,
-    title: r.title,
-    description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
-    images: r.images ?? [],
-    tags: r.tags ?? [],
-    groups: (r.groups ?? []).map((g: any) => String(g)),
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  };
-}
 
 export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
   const titleSlug = toSlug(String(data.title));
