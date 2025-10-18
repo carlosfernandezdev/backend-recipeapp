@@ -3,8 +3,55 @@ import Recipe, { IRecipe } from "../models/recipe.model";
 import { toSlug } from "../utils/normalize";
 import { ListQueryDTO } from "../dto/recipe.dto";
 
+function pickOwnerMeta(r: any) {
+  // cuando usamos .lean().populate, owner es objeto; si no, es ObjectId/string
+  const ownerObj = typeof r.owner === "object" ? r.owner : { _id: r.owner };
+  return {
+    owner: String(ownerObj._id || r.owner),
+    ownerName: ownerObj.name ?? null,
+    ownerEmail: ownerObj.email ?? null,
+  };
+}
+
+function sanitize(r: IRecipe & any) {
+  const { owner, ownerName, ownerEmail } = pickOwnerMeta(r);
+  return {
+    id: r.id.toString(),
+    owner,
+    ownerName,
+    ownerEmail,
+    title: r.title,
+    description: r.description,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    images: r.images ?? [],
+    tags: r.tags ?? [],
+    groups: r.groups?.map((g: any) => String(g)) ?? [],
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
+function sanitizeLean(r: any) {
+  const { owner, ownerName, ownerEmail } = pickOwnerMeta(r);
+  return {
+    id: r._id.toString(),
+    owner,
+    ownerName,
+    ownerEmail,
+    title: r.title,
+    description: r.description,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    images: r.images ?? [],
+    tags: r.tags ?? [],
+    groups: (r.groups ?? []).map((g: any) => String(g)),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
 export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
-  // Chequeo optimista de duplicado (la DB también lo protegerá con el índice único)
   const titleSlug = toSlug(String(data.title));
   const exists = await Recipe.exists({ owner: ownerId, titleSlug });
   if (exists) {
@@ -12,6 +59,7 @@ export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
     err.status = 409;
     throw err;
   }
+
   const recipe = await Recipe.create({
     owner: new Types.ObjectId(ownerId),
     title: data.title,
@@ -21,28 +69,23 @@ export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
     steps: data.steps,
     images: data.images ?? [],
     tags: data.tags ?? [],
-    groups: [], 
+    groups: [],
   });
-  return sanitize(recipe);
+
+  // devolver con owner 
+  await recipe.populate({ path: "owner", select: "name email" });
+  return sanitize(recipe as any);
 }
 
-export async function getRecipeById(ownerId: string, id: string) {
-  const recipe = await Recipe.findById(id);
+/**  Lectura pública: cualquier usuario autenticado puede leer por id */
+export async function getRecipeById(_ownerId: string, id: string) {
+  const recipe = await Recipe.findById(id).populate({ path: "owner", select: "name email" });
   if (!recipe) {
     const err: any = new Error("Receta no encontrada");
     err.status = 404;
     throw err;
   }
-  // Política actual: el dueño puede leer su receta; generales las listamos aparte (todas)
-  // Si luego hay privacidad, aquí se valida visibilidad/ownership.
-  if (String(recipe.owner) !== String(ownerId)) {
-    // Por ahora permitimos leer “generales” si están en el listado general,
-    // pero para /:id exigimos ownership (se puede suavizar más adelante).
-    const err: any = new Error("No autorizado para ver esta receta");
-    err.status = 403;
-    throw err;
-  }
-  return sanitize(recipe);
+  return sanitize(recipe as any);
 }
 
 export async function updateRecipe(ownerId: string, id: string, data: Partial<IRecipe>) {
@@ -65,13 +108,14 @@ export async function updateRecipe(ownerId: string, id: string, data: Partial<IR
     { _id: id, owner: ownerId },
     data,
     { new: true }
-  );
+  ).populate({ path: "owner", select: "name email" });
+
   if (!updated) {
     const err: any = new Error("Receta no encontrada o no autorizada");
     err.status = 404;
     throw err;
   }
-  return sanitize(updated);
+  return sanitize(updated as any);
 }
 
 export async function deleteRecipe(ownerId: string, id: string) {
@@ -83,13 +127,15 @@ export async function deleteRecipe(ownerId: string, id: string) {
   }
   return { ok: true };
 }
+
+/** “general” = TODAS; “personal” = solo mías */
 export async function listRecipes(ownerId: string, params: ListQueryDTO) {
   const { scope, q, page, limit } = params;
   const filter: FilterQuery<IRecipe> = {};
 
   if (scope === "personal") {
     filter.owner = new Types.ObjectId(ownerId);
-  } 
+  }
   if (q && q.trim()) {
     filter.title = { $regex: q.trim(), $options: "i" };
   }
@@ -98,10 +144,11 @@ export async function listRecipes(ownerId: string, params: ListQueryDTO) {
 
   const [items, total] = await Promise.all([
     Recipe.find(filter)
-      .sort({ titleSlug: 1 }) 
+      .sort({ titleSlug: 1 })
       .skip(skip)
       .limit(limit)
-      .lean(),
+      .lean()
+      .populate({ path: "owner", select: "name email" }),
     Recipe.countDocuments(filter),
   ]);
 
@@ -110,38 +157,5 @@ export async function listRecipes(ownerId: string, params: ListQueryDTO) {
     limit,
     total,
     items: items.map(sanitizeLean),
-  };
-}
-
-/* ------------- helpers ------------- */
-function sanitize(r: IRecipe) {
-  return {
-    id: r.id.toString(),
-    owner: r.owner.toString(),
-    title: r.title,
-    description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
-    images: r.images ?? [],
-    tags: r.tags ?? [],
-    groups: r.groups?.map(g => g.toString()) ?? [],
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  };
-}
-
-function sanitizeLean(r: any) {
-  return {
-    id: r._id.toString(),
-    owner: r.owner.toString(),
-    title: r.title,
-    description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
-    images: r.images ?? [],
-    tags: r.tags ?? [],
-    groups: (r.groups ?? []).map((g: any) => String(g)),
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
   };
 }
