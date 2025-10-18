@@ -67,6 +67,8 @@ export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
     description: data.description,
     ingredients: data.ingredients,
     steps: data.steps,
+    servings: data.servings,
+    cookTime: data.cookTime,
     images: data.images ?? [],
     tags: data.tags ?? [],
     groups: [],
@@ -157,5 +159,38 @@ export async function listRecipes(ownerId: string, params: ListQueryDTO) {
     limit,
     total,
     items: items.map(sanitizeLean),
+  };
+}
+
+/* ------------- helpers ------------- */
+function sanitize(r: IRecipe) {
+  return {
+    id: r.id.toString(),
+    owner: r.owner.toString(),
+    title: r.title,
+    description: r.description,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    images: r.images ?? [],
+    tags: r.tags ?? [],
+    groups: r.groups?.map(g => g.toString()) ?? [],
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
+function sanitizeLean(r: any) {
+  return {
+    id: r._id.toString(),
+    owner: r.owner.toString(),
+    title: r.title,
+    description: r.description,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    images: r.images ?? [],
+    tags: r.tags ?? [],
+    groups: (r.groups ?? []).map((g: any) => String(g)),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   };
 }

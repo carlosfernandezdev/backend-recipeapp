@@ -12,6 +12,8 @@ export const CreateRecipeDTO = z.object({
   description: z.string().optional(),
   ingredients: z.array(IngredientDTO).min(1, "Al menos 1 ingrediente"),
   steps: z.array(z.string().min(1)).min(1, "Al menos 1 paso"),
+  servings: z.number().int().min(1, "Debe ser al menos 1"),
+  cookTime: z.number().int().min(1, "Debe ser al menos 1"),
   images: z.array(z.string().url()).optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -23,6 +25,8 @@ export const UpdateRecipeDTO = z.object({
   description: z.string().optional(),
   ingredients: z.array(IngredientDTO).min(1).optional(),
   steps: z.array(z.string().min(1)).min(1).optional(),
+  servings: z.number().int().min(1).optional(),
+  cookTime: z.number().int().min(1).optional(),
   images: z.array(z.string().url()).optional(),
   tags: z.array(z.string()).optional(),
 });
