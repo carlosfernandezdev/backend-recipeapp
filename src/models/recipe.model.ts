@@ -14,7 +14,9 @@ export interface IRecipe extends Document {
   titleSlug: string;              // normalizado para orden y unicidad
   description?: string;
   ingredients: IIngredient[];     // >= 1
-  steps: string[];                // >= 1
+  steps: string[];     
+  servings: number;
+  cookTime: number;           // >= 1
   images?: string[];
   tags?: string[];
   groups: Types.ObjectId[];       // Group._id[]
@@ -38,6 +40,8 @@ const RecipeSchema = new Schema<IRecipe>(
     title: { type: String, required: true, trim: true, maxlength: 120 },
     titleSlug: { type: String, required: true, index: true },
     description: { type: String },
+    servings: { type: Number, required: true, min: 1 },
+    cookTime: { type: Number, required: true, min: 1 },
     ingredients: {
       type: [IngredientSchema],
       validate: {
