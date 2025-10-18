@@ -90,7 +90,7 @@ export async function getMe(req: Request, res: Response) {
 }
 
 /** PATCH /users/me */
-export async function patchMe(req, res) {
+export async function patchMe(req: Request, res: Response) {
   const userId = (req as any).user?.id;
   if (!userId) return res.status(401).json({ message: "No autorizado" });
 
