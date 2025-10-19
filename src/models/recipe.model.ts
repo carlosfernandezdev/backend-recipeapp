@@ -17,7 +17,8 @@ export interface IRecipe extends Document {
   steps: string[];     
   servings: number;
   cookTime: number;           // >= 1
-  images?: string[];
+  images: string[];         // URLs de Cloudinary (secure_url)
+  imagePublicIds: string[];
   tags?: string[];
   groups: Types.ObjectId[];       // Group._id[]
   createdAt: Date;
@@ -56,7 +57,8 @@ const RecipeSchema = new Schema<IRecipe>(
         message: "Debe incluir al menos un paso.",
       },
     },
-    images: [{ type: String }],
+    images: { type: [String], default: [] },           // NUEVO
+    imagePublicIds: { type: [String], default: [] }, 
     tags: [{ type: String }],
     groups: [{ type: Schema.Types.ObjectId, ref: "Group", index: true }],
   },

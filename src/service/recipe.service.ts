@@ -2,6 +2,7 @@ import { FilterQuery, Types } from "mongoose";
 import Recipe, { IRecipe } from "../models/recipe.model";
 import { toSlug } from "../utils/normalize";
 import { ListQueryDTO } from "../dto/recipe.dto";
+import cloudinary from "../config/cloudinary";
 
 function pickOwnerMeta(r: any) {
   // cuando usamos .lean().populate, owner es objeto; si no, es ObjectId/string
@@ -13,7 +14,10 @@ function pickOwnerMeta(r: any) {
   };
 }
 
-
+/**
+ * Crea receta (con URLs y public_ids de Cloudinary ya resueltos desde el cliente).
+ * - Valida título único por owner usando titleSlug
+ */
 export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
   const titleSlug = toSlug(String(data.title));
   const exists = await Recipe.exists({ owner: ownerId, titleSlug });
@@ -32,12 +36,13 @@ export async function createRecipe(ownerId: string, data: Partial<IRecipe>) {
     steps: data.steps,
     servings: data.servings,
     cookTime: data.cookTime,
-    images: data.images ?? [],
+    images: data.images ?? [],                 // URLs (secure_url)
+    imagePublicIds: (data as any).imagePublicIds ?? [], // public_id de Cloudinary
     tags: data.tags ?? [],
     groups: [],
   });
 
-  // devolver con owner 
+  // devolver con owner
   await recipe.populate({ path: "owner", select: "name email" });
   return sanitize(recipe as any);
 }
@@ -53,7 +58,13 @@ export async function getRecipeById(_ownerId: string, id: string) {
   return sanitize(recipe as any);
 }
 
+/**
+ * Actualiza receta del owner.
+ * - Mantiene unicidad por titleSlug
+ * - Si cambian imagePublicIds: borra en Cloudinary los public_id que quedaron fuera
+ */
 export async function updateRecipe(ownerId: string, id: string, data: Partial<IRecipe>) {
+  // Unicidad por título (slug)
   if (data.title) {
     const titleSlug = toSlug(String(data.title));
     const conflict = await Recipe.exists({
@@ -67,6 +78,24 @@ export async function updateRecipe(ownerId: string, id: string, data: Partial<IR
       throw err;
     }
     (data as any).titleSlug = titleSlug;
+  }
+
+  // Necesitamos comparar imagePublicIds antes del update
+  const current = await Recipe.findOne({ _id: id, owner: ownerId });
+  if (!current) {
+    const err: any = new Error("Receta no encontrada o no autorizada");
+    err.status = 404;
+    throw err;
+  }
+
+  // Si vienen nuevos publicIds, eliminar de Cloudinary los que ya NO están
+  if (Array.isArray((data as any).imagePublicIds)) {
+    const oldSet = new Set(current.imagePublicIds || []);
+    const newSet = new Set<string>((data as any).imagePublicIds);
+    const toDelete = [...oldSet].filter((pid) => !newSet.has(pid));
+    if (toDelete.length) {
+      await Promise.allSettled(toDelete.map((pid) => cloudinary.uploader.destroy(pid)));
+    }
   }
 
   const updated = await Recipe.findOneAndUpdate(
@@ -83,13 +112,24 @@ export async function updateRecipe(ownerId: string, id: string, data: Partial<IR
   return sanitize(updated as any);
 }
 
+/**
+ * Elimina receta del owner.
+ * - Borra previamente todas las imágenes de Cloudinary por imagePublicIds
+ */
 export async function deleteRecipe(ownerId: string, id: string) {
-  const deleted = await Recipe.findOneAndDelete({ _id: id, owner: ownerId });
-  if (!deleted) {
+  const doc = await Recipe.findOne({ _id: id, owner: ownerId });
+  if (!doc) {
     const err: any = new Error("Receta no encontrada o no autorizada");
     err.status = 404;
     throw err;
   }
+
+  const pids = doc.imagePublicIds || [];
+  if (pids.length) {
+    await Promise.allSettled(pids.map((pid) => cloudinary.uploader.destroy(pid)));
+  }
+
+  await doc.deleteOne();
   return { ok: true };
 }
 
@@ -134,26 +174,31 @@ function sanitize(r: IRecipe) {
     description: r.description,
     ingredients: r.ingredients,
     steps: r.steps,
-    images: r.images ?? [],
+    images: r.images ?? [],               // URLs
+    imagePublicIds: (r as any).imagePublicIds ?? [], // public_id (quitar si no quieres exponer)
     tags: r.tags ?? [],
     groups: r.groups?.map(g => g.toString()) ?? [],
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+    // opcional: ...pickOwnerMeta(r) si no usas populate aquí
   };
 }
 
 function sanitizeLean(r: any) {
+  // r.owner podría ser objeto (por populate) u ObjectId/string
   return {
     id: r._id.toString(),
-    owner: r.owner.toString(),
+    owner: (typeof r.owner === "object" ? r.owner._id : r.owner).toString(),
     title: r.title,
     description: r.description,
     ingredients: r.ingredients,
     steps: r.steps,
-    images: r.images ?? [],
+    images: r.images ?? [],                 // URLs
+    imagePublicIds: r.imagePublicIds ?? [], // public_id (quitar si no quieres exponer)
     tags: r.tags ?? [],
     groups: (r.groups ?? []).map((g: any) => String(g)),
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+    // opcional: ...pickOwnerMeta(r)
   };
 }
