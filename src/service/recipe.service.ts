@@ -124,35 +124,48 @@ export async function listRecipes(ownerId: string, params: ListQueryDTO) {
     items: items.map(sanitizeLean),
   };
 }
-
 /* ------------- helpers ------------- */
-function sanitize(r: IRecipe) {
+function sanitize(r: IRecipe | (IRecipe & { toObject?: () => any })) {
+  // Si viene como Document, obtener objeto plano
+  const anyR: any = (r as any)?.toObject?.() ?? r;
+
+  const { owner, ownerName, ownerEmail } = pickOwnerMeta(anyR);
+
   return {
-    id: r.id.toString(),
-    owner: r.owner.toString(),
-    title: r.title,
-    description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
-    images: r.images ?? [],
-    tags: r.tags ?? [],
-    groups: r.groups?.map(g => g.toString()) ?? [],
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
+    id: String(anyR._id ?? anyR.id),
+    owner,
+    ownerName,
+    ownerEmail,
+    title: anyR.title,
+    description: anyR.description,
+    ingredients: anyR.ingredients ?? [],
+    steps: anyR.steps ?? [],
+    images: anyR.images ?? [],
+    tags: anyR.tags ?? [],
+    groups: (anyR.groups ?? []).map((g: any) => String(g)),
+    servings: anyR.servings,
+    cookTime: anyR.cookTime,
+    createdAt: anyR.createdAt,
+    updatedAt: anyR.updatedAt,
   };
 }
 
 function sanitizeLean(r: any) {
+  const { owner, ownerName, ownerEmail } = pickOwnerMeta(r);
   return {
-    id: r._id.toString(),
-    owner: r.owner.toString(),
+    id: String(r._id),
+    owner,
+    ownerName,
+    ownerEmail,
     title: r.title,
     description: r.description,
-    ingredients: r.ingredients,
-    steps: r.steps,
+    ingredients: r.ingredients ?? [],
+    steps: r.steps ?? [],
     images: r.images ?? [],
     tags: r.tags ?? [],
     groups: (r.groups ?? []).map((g: any) => String(g)),
+    servings: r.servings,
+    cookTime: r.cookTime,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
