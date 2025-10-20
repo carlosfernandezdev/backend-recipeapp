@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes";
 import usersRoutes from "./routes/user.routes";
 import recipesRoutes from "./routes/recipes.routes";
 import groupRoutes from "./routes/group.routes";
+import upload from "./routes/upload.routes";
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
 app.use("/recipes", recipesRoutes);
 app.use("/groups", groupRoutes);
+app.use("/api/upload", upload);
 
 app.use((req, res) => res.status(404).json({ error: "NotFound", message: `${req.method} ${req.originalUrl}` }));
 

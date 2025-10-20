@@ -14,8 +14,11 @@ export const CreateRecipeDTO = z.object({
   steps: z.array(z.string().min(1)).min(1, "Al menos 1 paso"),
   servings: z.number().int().min(1, "Debe ser al menos 1"),
   cookTime: z.number().int().min(1, "Debe ser al menos 1"),
-  images: z.array(z.string().url()).optional(),
-  tags: z.array(z.string()).optional(),
+  // NUEVO: guardamos URL(s) de Cloudinary
+  images: z.array(z.string().url()).default([]),
+  // NUEVO: y sus public_id(s) correspondientes
+  imagePublicIds: z.array(z.string().min(1)).default([]),
+  tags: z.array(z.string()).default([]),
 });
 
 export type CreateRecipeDTO = z.infer<typeof CreateRecipeDTO>;
@@ -28,14 +31,15 @@ export const UpdateRecipeDTO = z.object({
   servings: z.number().int().min(1).optional(),
   cookTime: z.number().int().min(1).optional(),
   images: z.array(z.string().url()).optional(),
+  imagePublicIds: z.array(z.string().min(1)).optional(),
   tags: z.array(z.string()).optional(),
 });
+
 export type UpdateRecipeDTO = z.infer<typeof UpdateRecipeDTO>;
 
-// Listado: personales vs generales (todas)
 export const ListQueryDTO = z.object({
   scope: z.enum(["personal", "general"]).default("general"),
-  q: z.string().optional(),         // buscar por título (case-insensitive)
+  q: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
